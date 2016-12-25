@@ -10,11 +10,11 @@ var gameOptions = {
 
 // create svg canvas
 var gameBoard = d3.select('.board .mouse').append('svg').attr('height', gameOptions.height).attr('width', gameOptions.width);
-console.log(gameBoard.size());
 
+//--------------- Set Up Enemies ---------------------------
 // create enemies. all enemies have .enemy class
 var makeEnemyData = function () {
-  return [ ...Array(gameOptions.nEnemies).keys()].map(function(d, i) {
+  return d3.range(gameOptions.nEnemies).map(function(d, i) {
     return {
       id: i,
       x: Math.random() * gameOptions.width,
@@ -23,26 +23,44 @@ var makeEnemyData = function () {
   });
 };
 var enemyData = makeEnemyData();
-console.log(enemyData);
 
 //bind the enemy data to selection, update enemy id on update
 var enemySel = gameBoard.selectAll('.enemy').data(enemyData, function(d, i) { return d.id; });
 //enter the selections to be rendered
-enemySel.enter().append('circle').attr('class', 'enemy').attr('cx', function(d, i) { return d.x; }).attr('cy', function(d, i) { return d.y; }).attr('r', 10).attr('fill', 'yellow');
+enemySel.enter().append('image').attr('class', 'enemy').attr('x', function(d, i) { return d.x; }).attr('y', function(d, i) { return d.y; }).attr('height', 50).attr('width', 50).attr('xlink:href', 'asteroid.png');
+
+
+//-------------- Set Up Player --------------------------
+//create a differently-coloured player and make it draggable
+//each circle's datum has [x,y] properties, which updates when dragged
+var drag = d3.behavior.drag().on('drag', function(d) {
+  d3.select(this).attr('cx', d3.event.x).attr('cy', d3.event.y);
+});
+var playerData = [{
+  x: gameOptions.width / 2,
+  y: gameOptions.height / 2
+}];
+var playerSel = gameBoard.selectAll('.player').data(playerData);
+playerSel.enter().append('circle').attr('class', 'player').attr('cx', d=>d.x).attr('cy', d=>d.y)
+.attr('r', 10).attr('fill', 'yellow').call(drag);
+
+
+
+
 
 
 //-------- Function to update enemy positions on canvas --------
 var updateEnemy = function (enemyData) {
   //bind the enemy data to selection, update enemy id on update
-  var enemySel = gameBoard.selectAll('.enemy').data(enemyData);
+  var enemySel = gameBoard.selectAll('.enemy').data(enemyData, d=>d.id);
   enemySel.attr('id', function(d) { return d.id; })
-  .attr('cx', d => d.x)
-  .attr('cy', d => d.y );
-  console.log(enemySel);
+  .attr('x', d => d.x)
+  .attr('y', d => d.y );
+  // console.log(enemySel);
 };
 
 
 // updateEnemy(makeEnemyData());
-setInterval(function() {
-  updateEnemy(makeEnemyData());
-},1000);
+// setInterval(function() {
+//   updateEnemy(makeEnemyData());
+// }, 10000);
