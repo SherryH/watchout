@@ -4,8 +4,14 @@
 var gameOptions = {
   height: window.innerHeight,
   width: window.innerWidth,
-  nEnemies: 30,
+  nEnemies: 1,
   padding: 20
+};
+
+var gameStats = {
+  collisionCount: 0,
+  highestScoreCount: 0,
+  currentScoreCount: 0
 };
 
 // create svg canvas
@@ -29,6 +35,7 @@ var makeHelperFunc = function() {
   };
   return obj;
 };
+var helper = makeHelperFunc();
 
 //--------------- Set Up Enemies ---------------------------
 // create enemies. all enemies have .enemy class
@@ -37,7 +44,9 @@ var makeEnemyData = function () {
     return {
       id: i,
       x: Math.random() * gameOptions.width,
-      y: Math.random() * gameOptions.height
+      y: Math.random() * gameOptions.height,
+      height: 50,
+      width: 50
     };
   });
 };
@@ -46,7 +55,7 @@ var enemyData = makeEnemyData();
 //bind the enemy data to selection, update enemy id on update
 var enemySel = gameBoard.selectAll('.enemy').data(enemyData, function(d, i) { return d.id; });
 //enter the selections to be rendered
-var enterEnemySel = enemySel.enter().append('image').attr('class', 'enemy').attr('x', function(d, i) { return d.x; }).attr('y', function(d, i) { return d.y; }).attr('height', 50).attr('width', 50).attr('xlink:href', 'asteroid.png');
+var enteredEnemySel = enemySel.enter().append('image').attr('class', 'enemy').attr('x', function(d, i) { return d.x; }).attr('y', function(d, i) { return d.y; }).attr('height', d=>d.height).attr('width', d=>d.width).attr('xlink:href', 'asteroid.png');
 
 
 //-------------- Set Up Player --------------------------
@@ -54,41 +63,92 @@ var enterEnemySel = enemySel.enter().append('image').attr('class', 'enemy').attr
 //each circle's datum has [x,y] properties, which updates when dragged
 var playerData = [{
   x: gameOptions.width / 2,
-  y: gameOptions.height / 2
+  y: gameOptions.height / 2,
+  r: 10
 }];
 
 
-
-
-var helper = makeHelperFunc();
 playerData._move = function(d) {
   var position = helper.moveOnScreen(d3.event.x, d3.event.y);
   d3.select(this).attr('cx', position.x).attr('cy', position.y);
 };
+
 var drag = d3.behavior.drag().on('drag', playerData._move);
 var playerSel = gameBoard.selectAll('.player').data(playerData);
-playerSel.enter().append('circle').attr('class', 'player').attr('cx', d=>d.x).attr('cy', d=>d.y)
-.attr('r', 10).attr('fill', 'yellow').call(drag);
+var enteredPlayerSel = playerSel.enter().append('circle').attr('class', 'player').attr('cx', d=>d.x).attr('cy', d=>d.y)
+.attr('r', d=>d.r).attr('fill', 'yellow').call(drag);
+
+// check for collision
+// go through each of the enemy
+// check the position of the enemy to player
+// from the center of enemy and player, check if x-dist < (player rad and enemy width/2), y-dist
+// if both yes, they collide! console log collide first
+// var checkCollision = function() {
+
+// };
+// playerSel.on('mouseenter', function(e) {
+//   // console.log('dragging');
+//   //check the distance
+// });
+
+// will be called inside enemy, access playerSelection via 'this'
+var checkCollision = function(enemy, collidedCallback) {
+  var player = enteredPlayerSel[0];
+  // var enemy = enteredEnemySel;
+  var halfEnemyWidth = parseFloat(enteredEnemySel.attr('width')) / 2;
+  var halfEnemyHeight = parseFloat(enteredEnemySel.attr('height')) / 2;
+  var xDiffSum = parseFloat(enteredPlayerSel.attr('r')) + halfEnemyWidth;
+  var yDiffSum = parseFloat(enteredPlayerSel.attr('r')) + halfEnemyHeight;
+  var currentXDiff = parseFloat(enteredPlayerSel.attr('cx')) - (parseFloat(enemy.attr('x')) + halfEnemyWidth);
+  var currentYDiff = parseFloat(enteredPlayerSel.attr('cy')) - (parseFloat(enemy.attr('y')) + halfEnemyHeight);
+
+  // var separation = function() {
+  //   return Math.sqrt(Math.pow(currentXDiff, 2) + Math.pow(currentYDiff, 2));
+  // };
+
+  if (Math.abs(currentXDiff) < xDiffSum && Math.abs(currentYDiff) < yDiffSum) {
+    collidedCallback();
+  }
 
 
+  // console.log(enteredEnemySel.attr('x'));
+  console.log(enemy.attr('x'));
+  console.log(xDiffSum);
+  console.log(currentXDiff);
 
+};
+
+var updateScore = function() {
+  //increment collision count
+  //d3.select('.collisions span').text();
+  gameStats.collisionCount++;
+  console.log('****** collision', gameStats.collisionCount);
+};
 
 
 
 //-------- Function to update enemy positions on canvas --------
 var updateEnemy = function (enemyData) {
   //bind the enemy data to selection, update enemy id on update
-  var enemySel = enterEnemySel.data(enemyData, d=>d.id);
-  enemySel.attr('id', function(d) { return d.id; })
-  .transition()
-  .duration(5000)
+  var enemySel = enteredEnemySel.data(enemyData, d=>d.id);
+  enemySel.transition()
+  .duration(100000)
   .attr('x', d => d.x)
   .attr('y', d => d.y );
   // console.log(enemySel);
+  enemySel.transition().tween('detectCollision', function() {
+    // after binding with data, enemySel (this) becomes refering to svg objs
+    // use d3.select(this) to wrap the svg obj to d3 obj
+    var enemy = d3.select(this);
+    console.log(enemy);
+    return function(t) {
+      checkCollision(enemy, updateScore);
+    };
+  });
 };
 
 
 updateEnemy(makeEnemyData());
 setInterval(function() {
   updateEnemy(makeEnemyData());
-}, 1000);
+}, 10000);
