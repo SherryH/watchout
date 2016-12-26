@@ -4,7 +4,7 @@
 var gameOptions = {
   height: window.innerHeight,
   width: window.innerWidth,
-  nEnemies: 1,
+  nEnemies: 30,
   padding: 20
 };
 
@@ -64,7 +64,7 @@ var enteredEnemySel = enemySel.enter().append('image').attr('class', 'enemy').at
 var playerData = [{
   x: gameOptions.width / 2,
   y: gameOptions.height / 2,
-  r: 10
+  r: 15
 }];
 
 
@@ -78,19 +78,8 @@ var playerSel = gameBoard.selectAll('.player').data(playerData);
 var enteredPlayerSel = playerSel.enter().append('circle').attr('class', 'player').attr('cx', d=>d.x).attr('cy', d=>d.y)
 .attr('r', d=>d.r).attr('fill', 'yellow').call(drag);
 
-// check for collision
-// go through each of the enemy
-// check the position of the enemy to player
-// from the center of enemy and player, check if x-dist < (player rad and enemy width/2), y-dist
-// if both yes, they collide! console log collide first
-// var checkCollision = function() {
 
-// };
-// playerSel.on('mouseenter', function(e) {
-//   // console.log('dragging');
-//   //check the distance
-// });
-
+//----------------- Functions to check collisions -------------------
 // will be called inside enemy, access playerSelection via 'this'
 var checkCollision = function(enemy, collidedCallback) {
   var player = enteredPlayerSel[0];
@@ -110,19 +99,17 @@ var checkCollision = function(enemy, collidedCallback) {
     collidedCallback();
   }
 
-
-  // console.log(enteredEnemySel.attr('x'));
-  console.log(enemy.attr('x'));
-  console.log(xDiffSum);
-  console.log(currentXDiff);
-
 };
 
 var updateScore = function() {
   //increment collision count
   //d3.select('.collisions span').text();
   gameStats.collisionCount++;
-  console.log('****** collision', gameStats.collisionCount);
+  gameStats.highestScoreCount = (gameStats.highestScoreCount < gameStats.currentScoreCount) ? gameStats.currentScoreCount : gameStats.highestScoreCount;
+  gameStats.currentScoreCount = 0;
+
+  d3.select('.highscore span').text(gameStats.highestScoreCount.toString());
+  d3.select('.collisions span').text(gameStats.collisionCount.toString());
 };
 
 
@@ -132,23 +119,27 @@ var updateEnemy = function (enemyData) {
   //bind the enemy data to selection, update enemy id on update
   var enemySel = enteredEnemySel.data(enemyData, d=>d.id);
   enemySel.transition()
-  .duration(100000)
+  .duration(1000)
   .attr('x', d => d.x)
-  .attr('y', d => d.y );
-  // console.log(enemySel);
-  enemySel.transition().tween('detectCollision', function() {
-    // after binding with data, enemySel (this) becomes refering to svg objs
+  .attr('y', d => d.y )
+  .tween('detectCollision', function() {
+    // after binding with data, enemySel (this) becomes refering to each svg obj in selection
     // use d3.select(this) to wrap the svg obj to d3 obj
     var enemy = d3.select(this);
-    console.log(enemy);
+    // console.log(enemy);
     return function(t) {
       checkCollision(enemy, updateScore);
     };
   });
 };
 
-
+//------------------------- Run Program -------------------------
 updateEnemy(makeEnemyData());
 setInterval(function() {
   updateEnemy(makeEnemyData());
-}, 10000);
+}, 1000);
+
+setInterval(function() {
+  gameStats.currentScoreCount++;
+  d3.select('.current span').text(gameStats.currentScoreCount.toString());
+}, 500);
